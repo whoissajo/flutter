@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../constants/app_constants.dart';
 import '../../providers/onboarding_provider.dart';
-import '../../providers/auth_provider.dart';
 
-/// Splash screen that shows app logo and determines navigation flow
+/// Splash screen that shows app logo and navigates directly to home
+/// No auth required for local storage app
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -32,7 +31,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       duration: AppConstants.defaultAnimationDuration,
       vsync: this,
     );
-
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -40,7 +38,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       parent: _animationController,
       curve: Curves.easeIn,
     ));
-
     _scaleAnimation = Tween<double>(
       begin: 0.8,
       end: 1.0,
@@ -48,34 +45,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       parent: _animationController,
       curve: Curves.elasticOut,
     ));
-
     _animationController.forward();
   }
 
   void _navigateAfterDelay() async {
     // Wait for splash duration
     await Future.delayed(AppConstants.splashDuration);
-
     if (!mounted) return;
-
-    // Check authentication status first
-    final isSignedIn = ref.read(isSignedInProvider);
-
-    if (isSignedIn) {
-      // User is already signed in, go to home
-      context.go(AppConstants.homeRoute);
-      return;
-    }
-
-    // Check onboarding status for unauthenticated users
+    
+    // Check onboarding status for local user
     final onboardingStatus = await ref.read(onboardingStatusProvider.future);
-
     if (!mounted) return;
-
-    // Navigate based on onboarding status
+    
+    // Navigate based on onboarding status - always to home since no auth needed
     if (onboardingStatus) {
-      // User has completed onboarding but not signed in, go to login
-      context.go(AppConstants.loginRoute);
+      // User has completed onboarding, go to home
+      context.go(AppConstants.homeRoute);
     } else {
       // User hasn't completed onboarding, show onboarding
       context.go(AppConstants.onboardingRoute);
@@ -92,7 +77,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       body: Center(
@@ -108,9 +92,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   children: [
                     // App logo
                     _buildLogo(context, size),
-                    
                     const SizedBox(height: 24),
-                    
                     // App name
                     Text(
                       AppConstants.appName,
@@ -119,9 +101,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         color: theme.colorScheme.primary,
                       ),
                     ),
-                    
                     const SizedBox(height: 8),
-                    
                     // App version
                     Text(
                       'v${AppConstants.appVersion}',
@@ -129,9 +109,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
-                    
                     const SizedBox(height: 48),
-                    
                     // Loading indicator
                     SizedBox(
                       width: 24,
@@ -155,7 +133,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Widget _buildLogo(BuildContext context, Size size) {
     final theme = Theme.of(context);
-    
     return Container(
       width: size.width * 0.3,
       height: size.width * 0.3,

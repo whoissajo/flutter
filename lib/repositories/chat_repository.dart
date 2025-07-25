@@ -23,7 +23,7 @@ class ChatMessageRepository extends BaseRepository<ChatMessage> {
       if (messagesJson == null) return [];
       final List<dynamic> messagesList = json.decode(messagesJson);
       return messagesList
-          .map((json) => ChatMessage.fromJson(json))
+          .map((json) => ChatMessage.fromStorage(json))
           .toList();
     } catch (e) {
       return [];
@@ -70,7 +70,7 @@ class ChatMessageRepository extends BaseRepository<ChatMessage> {
   Future<void> _saveMessages(List<ChatMessage> messages) async {
     final prefs = await SharedPreferences.getInstance();
     final messagesJson = json.encode(
-      messages.map((message) => message.toJson()).toList(),
+      messages.map((message) => message.toStorage()).toList(),
     );
     await prefs.setString(_messagesStorageKey, messagesJson);
   }
@@ -123,13 +123,13 @@ class ConversationRepository extends BaseRepository<Conversation> {
 
   @override
   Future<List<Conversation>> getAll() async {
-    try { 
+    try {      
       final prefs = await SharedPreferences.getInstance();
       final conversationsJson = prefs.getString(_conversationsKey);
       if (conversationsJson == null) return [];
       final List<dynamic> conversationsList = json.decode(conversationsJson);
       return conversationsList
-          .map((json) => Conversation.fromJson(json['id'], json))
+          .map((json) => Conversation.fromStorage(json))
           .toList();
     } catch (e) {
       return [];
@@ -177,7 +177,7 @@ class ConversationRepository extends BaseRepository<Conversation> {
   Future<void> _saveConversations(List<Conversation> conversations) async {
     final prefs = await SharedPreferences.getInstance();
     final conversationsJson = json.encode(
-      conversations.map((conversation) => conversation.toJson()).toList(),
+      conversations.map((conversation) => conversation.toStorage()).toList(),
     );
     await prefs.setString(_conversationsKey, conversationsJson);
   }
@@ -240,7 +240,7 @@ class ConversationRepository extends BaseRepository<Conversation> {
     return conversation.id;
   }
 
-  /// Update conversation message count 
+  /// Update conversation message count
   Future<void> updateMessageCount(String conversationId, int newCount) async {
     final conversation = await get(conversationId);
     if (conversation != null) {

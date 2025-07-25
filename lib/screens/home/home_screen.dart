@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../constants/app_constants.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
-// import '../../providers/speech_provider.dart';
 import '../../models/chat_message.dart';
+import '../../models/user_model.dart';
 
-/// Home screen with AI chatbot interface
+/// Home screen with AI chatbot interface - no auth required
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -19,7 +17,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isVoiceMode = false;
   bool _hasText = false;
 
   @override
@@ -48,54 +45,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final user = ref.watch(currentUserProvider);
     final userMessages = ref.watch(userMessagesProvider);
     final isLoading = ref.watch(isChatLoadingProvider);
     final error = ref.watch(chatErrorProvider);
-
-    // Speech recognition state (temporarily disabled)
-    // final speechService = ref.read(speechServiceProvider);
-
-    // Speech functionality temporarily disabled for APK build
-    /*
-    // Update text field with speech words when in voice mode
-    ref.listen(speechWordsProvider, (previous, next) {
-      if (_isVoiceMode && next.hasValue && next.value != null) {
-        _messageController.text = next.value!;
-        _messageController.selection = TextSelection.fromPosition(
-          TextPosition(offset: _messageController.text.length),
-        );
-      }
-    });
-
-    // Handle speech errors
-    ref.listen(speechErrorProvider, (previous, next) {
-      if (next.hasValue && next.value != null && next.value!.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Speech Error: ${next.value}'),
-            backgroundColor: theme.colorScheme.error,
-          ),
-        );
-      }
-    });
-
-    // Auto-stop voice mode when listening stops
-    ref.listen(speechListeningProvider, (previous, next) {
-      if (next.hasValue && next.value == false && _isVoiceMode) {
-        setState(() {
-          _isVoiceMode = false;
-        });
-      }
-    });
-    */
+    
+    // Use local user
+    final user = UserModel.localUser();
 
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('AI Chat - ${user?.firstName ?? 'User'}'),
+            Text('AI Chat - ${user.name}'),
             Text(
               'DeepSeek R1',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -115,38 +77,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: const Icon(Icons.refresh),
             tooltip: 'Clear Chat',
           ),
-
           // Profile button
           IconButton(
             onPressed: () => context.push('/profile'),
             icon: CircleAvatar(
               radius: 16,
               backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-              backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-              child: user?.photoURL == null
-                  ? Text(
-                      user?.initials ?? 'U',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
+              child: Icon(
+                Icons.person,
+                size: 16,
+                color: theme.colorScheme.primary,
+              ),
             ),
           ),
-
           PopupMenuButton<String>(
             onSelected: (value) async {
               switch (value) {
                 case 'profile':
                   context.push('/profile');
                   break;
-                case 'logout':
-                  final authNotifier = ref.read(authNotifierProvider.notifier);
-                  final result = await authNotifier.signOut();
-                  if (context.mounted && result.success) {
-                    context.go(AppConstants.loginRoute);
-                  }
+                case 'settings':
+                  context.push('/settings');
                   break;
               }
             },
@@ -156,8 +107,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Text('Profile'),
               ),
               const PopupMenuItem(
-                value: 'logout',
-                child: Text('Logout'),
+                value: 'settings',
+                child: Text('Settings'),
               ),
             ],
           ),
@@ -188,7 +139,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
-
           // Chat messages
           Expanded(
             child: userMessages.isEmpty
@@ -203,7 +153,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                   ),
           ),
-
           // Loading indicator
           if (isLoading)
             Padding(
@@ -229,9 +178,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
-
           // Message input
-          _buildMessageInput(context, theme, false),
+          _buildMessageInput(context, theme),
         ],
       ),
     );
@@ -258,9 +206,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 color: theme.colorScheme.primary,
               ),
             ),
-
             const SizedBox(height: 32),
-
             Text(
               'AI Chat Assistant',
               style: theme.textTheme.headlineMedium?.copyWith(
@@ -269,9 +215,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 16),
-
             Text(
               'Start a conversation with DeepSeek R1, an advanced AI model. Ask questions, get help, or just chat!',
               style: theme.textTheme.bodyLarge?.copyWith(
@@ -280,9 +224,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 32),
-
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -340,7 +282,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Build message bubble
   Widget _buildMessageBubble(BuildContext context, ThemeData theme, ChatMessage message) {
     final isUser = message.isUser;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -359,7 +300,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(width: 8),
           ],
-
           Flexible(
             child: Container(
               padding: const EdgeInsets.all(12),
@@ -380,181 +320,4 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: isUser
                       ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ),
-
-          if (isUser) ...[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-              child: Icon(
-                Icons.person,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Build message input field
-  Widget _buildMessageInput(BuildContext context, ThemeData theme, bool isListening) {
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.defaultPadding),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outline.withOpacity(0.2),
-          ),
-        ),
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                decoration: InputDecoration(
-                  hintText: _isVoiceMode
-                      ? (isListening ? 'Listening...' : 'Tap mic to speak')
-                      : 'Type your message...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                      color: _isVoiceMode
-                          ? theme.colorScheme.primary.withOpacity(0.5)
-                          : theme.colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                      color: _isVoiceMode
-                          ? theme.colorScheme.primary.withOpacity(0.5)
-                          : theme.colorScheme.outline.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                onSubmitted: _sendMessage,
-                readOnly: _isVoiceMode && isListening,
-              ),
-            ),
-
-            const SizedBox(width: 8),
-
-            // Voice input button
-            FloatingActionButton.small(
-              onPressed: _toggleVoiceInput,
-              backgroundColor: _isVoiceMode
-                  ? (isListening ? theme.colorScheme.error : theme.colorScheme.secondary)
-                  : theme.colorScheme.surface,
-              child: Icon(
-                _isVoiceMode
-                    ? (isListening ? Icons.stop : Icons.mic)
-                    : Icons.mic_none,
-                color: _isVoiceMode
-                    ? (isListening ? theme.colorScheme.onError : theme.colorScheme.onSecondary)
-                    : theme.colorScheme.onSurface,
-              ),
-            ),
-
-            const SizedBox(width: 8),
-
-            // Send button
-            FloatingActionButton.small(
-              onPressed: _hasText
-                  ? () => _sendMessage(_messageController.text)
-                  : null,
-              backgroundColor: _hasText
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outline.withOpacity(0.3),
-              child: Icon(
-                Icons.send,
-                color: _hasText
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurface.withOpacity(0.5),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Send message to AI
-  void _sendMessage(String message) {
-    if (message.trim().isEmpty) return;
-
-    ref.read(chatOperationsProvider).sendMessage(message);
-    _messageController.clear();
-
-    // Exit voice mode after sending
-    if (_isVoiceMode) {
-      setState(() {
-        _isVoiceMode = false;
-      });
-    }
-
-    // Scroll to bottom after sending message
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  /// Toggle voice input mode (temporarily disabled)
-  Future<void> _toggleVoiceInput() async {
-    // Speech functionality temporarily disabled for APK build
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Voice input feature coming soon!'),
-      ),
-    );
-    /*
-    final speechService = ref.read(speechServiceProvider);
-
-    if (_isVoiceMode) {
-      // If currently in voice mode, stop listening and exit voice mode
-      if (speechService.isListening) {
-        await speechService.stopListening();
-      }
-      setState(() {
-        _isVoiceMode = false;
-      });
-    } else {
-      // Enter voice mode and start listening
-      setState(() {
-        _isVoiceMode = true;
-      });
-
-      // Clear current text and start listening
-      _messageController.clear();
-      await speechService.startListening();
-    }
-    */
-  }
-}
+                      : theme
